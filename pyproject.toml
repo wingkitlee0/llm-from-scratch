@@ -1,0 +1,26 @@
+[project]
+name = "llm-from-scratch"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+authors = [
+    { name = "Kit Lee", email = "7000003+wingkitlee0@users.noreply.github.com" }
+]
+requires-python = ">=3.13"
+dependencies = [
+    "numpy>=2.3.5",
+    "tiktoken>=0.12.0",
+    "torch>=2.9.1",
+]
+
+[project.scripts]
+llm-from-scratch = "llm_from_scratch:main"
+
+[build-system]
+requires = ["uv_build>=0.9.7,<0.10.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "ipython>=9.8.0",
+]
