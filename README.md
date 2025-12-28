@@ -1,1 +1,1 @@
-# llm-from-scratch
+# llm
