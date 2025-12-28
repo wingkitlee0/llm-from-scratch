@@ -60,11 +60,11 @@ class MultiHeadAttention(nn.Module):
         # Attention score is about pairwise token similarity
         # Matmul -> (b, num_heads, num_tokens, num_tokens)
         attn_scores = queries @ keys.transpose(-2, -1)
-        mask_bool = self.mask.bool()[:num_tokens, :num_tokens]
+        mask_bool = self.mask[:num_tokens, :num_tokens].bool()
 
         # Apply mask in-place. mask=1 -> -torch.inf
         # -torch.inf is used because softmax(x) -> 0 when x -> -inf
-        attn_scores.masked_fill_(~mask_bool, -torch.inf)
+        attn_scores.masked_fill_(mask_bool, -torch.inf)
 
         # Apply softmax
         # dim=-1 -> normalize over the last dimension
@@ -80,16 +80,6 @@ class MultiHeadAttention(nn.Module):
         # Reshape -> (b, num_tokens, d_out), since d_out = num_heads * head_dim
         context_vectors = context_vectors.reshape(b, num_tokens, self.d_out)
         return self.out_proj(context_vectors)
-
-        attn_scores.masked_fill_(
-            self.mask[:num_tokens, :num_tokens],
-            -torch.inf,
-        )
-
-        attn_weights = torch.softmax(
-            attn_scores / keys.shape[-1] ** 0.5,
-            dim=-1,
-        )
 
 
 class LayerNorm(nn.Module):

@@ -2,13 +2,9 @@ import tiktoken
 import torch
 from torch.nn.utils.rnn import pad_sequence
 
-from llm.configs.gpt_config import GPTConfig
-from llm.placeholders import DummyGPTModel
 
-
-def main():
+def get_dummy_batch() -> torch.Tensor:
     tokenizer = tiktoken.get_encoding("gpt2")
-    batch = []
     texts = [
         "Hello, world!",
         "Hello, how are you?",
@@ -26,14 +22,4 @@ def main():
     batch = [torch.tensor(tokenizer.encode(text)) for text in texts]
     batch = pad_sequence(batch, batch_first=True, padding_value=0)
 
-    print(batch.shape)
-    print(batch)
-
-    model = DummyGPTModel(GPTConfig)
-    logits = model(batch)
-    print(logits.shape)
-    # print(logits)
-
-
-if __name__ == "__main__":
-    main()
+    return batch
