@@ -2,8 +2,8 @@ import tiktoken
 import torch
 from torch.nn.utils.rnn import pad_sequence
 
-from llm.placeholders import DummyGPTModel
 from llm.configs.gpt_config import GPTConfig
+from llm.placeholders import DummyGPTModel
 
 
 def main():

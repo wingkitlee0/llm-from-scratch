@@ -1,5 +1,5 @@
-from torch import dtype, nn, Tensor
 import torch
+from torch import Tensor, nn
 
 
 class CasualAttention(nn.Module):
