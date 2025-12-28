@@ -1,8 +1,11 @@
 import tiktoken
 
 from llm.configs.gpt_config import GPT_CONFIG_124M
-from llm.demo.gen_text import generate_text_simple
-from llm.demo.text_utils import text_to_token_ids, token_ids_to_text
+from llm.demo.text_utils import (
+    generate_text_simple,
+    text_to_token_ids,
+    token_ids_to_text,
+)
 from llm.gpt_models import GPTModel
 
 
