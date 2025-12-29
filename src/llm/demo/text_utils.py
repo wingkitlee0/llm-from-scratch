@@ -37,12 +37,22 @@ def generate_text_simple(
     return idx
 
 
-def text_to_token_ids(text: str, tokenizer: tiktoken.Encoding) -> torch.Tensor:
-    encoded = tokenizer.encode(
-        text,
-        allowed_special={"<|endoftext|>"},
-    )
-    return torch.tensor(encoded).unsqueeze(0)
+def text_to_token_ids(
+    text: str | list[str], tokenizer: tiktoken.Encoding
+) -> torch.Tensor:
+    def _single_encode(text: str) -> torch.Tensor:
+        encoded = tokenizer.encode(
+            text,
+            allowed_special={"<|endoftext|>"},
+        )
+        return torch.tensor(encoded).unsqueeze(0)
+
+    if isinstance(text, str):
+        return _single_encode(text)
+    elif isinstance(text, list):
+        return torch.cat([_single_encode(t) for t in text])
+    else:
+        raise ValueError(f"Unsupported type: {type(text)}")
 
 
 def token_ids_to_text(
