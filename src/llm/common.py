@@ -1,7 +1,7 @@
 import tiktoken
 
 from llm.configs.gpt_config import GPT_CONFIG_124M
-from llm.gpt_models import GPTModel
+from llm.gpt2.models import GPTModel
 
 DEFAULT_CONFIG_NAME = "124m"
 

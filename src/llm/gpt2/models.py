@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 
-from llm.modules import LayerNorm, TransformerBlock
+from llm.gpt2.modules import LayerNorm, TransformerBlock
 
 
 class GPTModel(nn.Module):

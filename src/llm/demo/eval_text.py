@@ -1,11 +1,11 @@
 import tiktoken
 import torch
 
-from llm.demo.text_utils import (
+from llm.common import get_gpt_model
+from llm.utils import (
     text_to_token_ids,
     token_ids_to_text,
 )
-from llm.top_level import get_gpt_model
 
 
 def main():

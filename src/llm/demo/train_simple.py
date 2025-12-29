@@ -1,19 +1,19 @@
 import tiktoken
 import torch
 
+from llm.common import get_gpt_model, get_tokenizer
 from llm.configs.gpt_config import GPT_CONFIG_124M
 from llm.demo.load_data import (
     calc_loss_batch,
     calc_loss_loader,
     get_train_and_val_loaders,
 )
-from llm.demo.text_utils import (
+from llm.gpt2.models import GPTModel
+from llm.utils import (
     generate_text_simple,
     text_to_token_ids,
     token_ids_to_text,
 )
-from llm.gpt_models import GPTModel
-from llm.top_level import get_gpt_model, get_tokenizer
 
 
 def evaluate_model(

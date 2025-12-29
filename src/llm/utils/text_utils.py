@@ -1,3 +1,5 @@
+from typing import Optional
+
 import tiktoken
 import torch
 
@@ -7,6 +9,7 @@ def generate_text_simple(
     idx,
     max_new_tokens,
     context_size,
+    device: Optional[torch.device] = None,
 ):
     """
     Args:
@@ -15,6 +18,9 @@ def generate_text_simple(
         max_new_tokens: the maximum number of new tokens to generate
         context_size: the size of the context
     """
+    if device is not None:
+        idx = idx.to(device)
+
     for _ in range(max_new_tokens):
         idx_cond = idx[:, -context_size:]
 

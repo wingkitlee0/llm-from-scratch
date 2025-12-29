@@ -1,7 +1,7 @@
 import torch
 
 from llm.configs.gpt_config import GPT_CONFIG_124M
-from llm.modules import FeedForward
+from llm.gpt2.modules import FeedForward
 
 
 def main():

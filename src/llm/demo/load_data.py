@@ -1,9 +1,9 @@
 # ch5
 import torch
 
+from llm.common import get_gpt_model, get_tokenizer
 from llm.configs.gpt_config import GPT_CONFIG_124M
 from llm.dataloader import create_dataloader_v1
-from llm.top_level import get_gpt_model, get_tokenizer
 
 
 def calc_loss_batch(

@@ -2,8 +2,8 @@ import tiktoken
 import torch
 
 from llm.configs.gpt_config import GPT_CONFIG_124M
-from llm.demo.text_utils import generate_text_simple
-from llm.gpt_models import GPTModel
+from llm.gpt2.models import GPTModel
+from llm.utils import generate_text_simple
 
 
 def main():

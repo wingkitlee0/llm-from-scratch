@@ -3,7 +3,7 @@ import argparse
 import torch
 import torch.nn as nn
 
-from llm.modules import ExampleDeepNeuralNetwork
+from llm.gpt2.modules import ExampleDeepNeuralNetwork
 
 
 def print_gradients(model, x):
