@@ -2,6 +2,7 @@ import tiktoken
 
 from llm.configs.gpt_config import GPT_CONFIG_124M
 from llm.demo.text_utils import (
+    generate,
     generate_text_simple,
     text_to_token_ids,
     token_ids_to_text,
@@ -24,6 +25,18 @@ def main():
         encoded,
         max_new_tokens=6,
         context_size=GPT_CONFIG_124M["context_length"],
+    )
+    output_text = token_ids_to_text(token_ids, tokenizer)
+    print(output_text)
+
+    # with temperature
+    token_ids = generate(
+        model,
+        encoded,
+        max_new_tokens=15,
+        context_size=GPT_CONFIG_124M["context_length"],
+        temperature=1.4,
+        top_k=25,
     )
     output_text = token_ids_to_text(token_ids, tokenizer)
     print(output_text)
