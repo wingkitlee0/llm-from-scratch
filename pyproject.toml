@@ -1,5 +1,5 @@
 [project]
-name = "llm-from-scratch"
+name = "llm"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
@@ -14,7 +14,7 @@ dependencies = [
 ]
 
 [project.scripts]
-llm-from-scratch = "llm_from_scratch:main"
+llm = "llm:main"
 
 [build-system]
 requires = ["uv_build>=0.9.7,<0.10.0"]

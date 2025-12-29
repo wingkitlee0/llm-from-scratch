@@ -1,6 +1,6 @@
-import torch
-from torch.utils.data import Dataset, DataLoader
 import tiktoken
+import torch
+from torch.utils.data import DataLoader, Dataset
 
 
 class GPTDatasetV1(Dataset):
