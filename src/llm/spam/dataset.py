@@ -1,18 +1,21 @@
-from typing import Optional
+import os
+from typing import TYPE_CHECKING, Optional
 
 import pandas as pd
-import tiktoken
 import torch
 from torch.utils.data import Dataset
 
 from llm.spam.padding import Padding
+
+if TYPE_CHECKING:
+    import tiktoken
 
 
 class SpamDataset(Dataset):
     def __init__(
         self,
         csv_file: str,
-        tokenizer: tiktoken.Encoding,
+        tokenizer: "tiktoken.Encoding",
         max_length: int | None = None,
         padding: Optional[Padding] = None,
     ):
@@ -44,3 +47,57 @@ class SpamDataset(Dataset):
             torch.tensor(encoded, dtype=torch.long),
             torch.tensor(label, dtype=torch.long),
         )
+
+
+def get_datasets(
+    data_dir: str, tokenizer: "tiktoken.Encoding"
+) -> dict[str, SpamDataset]:
+    train_dataset = SpamDataset(
+        csv_file=os.path.join(data_dir, "train.csv"),
+        tokenizer=tokenizer,
+        max_length=None,
+    )
+    val_dataset = SpamDataset(
+        csv_file=os.path.join(data_dir, "val.csv"),
+        tokenizer=tokenizer,
+        max_length=train_dataset.max_length,
+    )
+    test_dataset = SpamDataset(
+        csv_file=os.path.join(data_dir, "test.csv"),
+        tokenizer=tokenizer,
+        max_length=train_dataset.max_length,
+    )
+
+    return {
+        "train": train_dataset,
+        "val": val_dataset,
+        "test": test_dataset,
+    }
+
+
+def get_dataloaders(
+    datasets: dict[str, SpamDataset], batch_size: int, num_workers: int
+) -> dict[str, torch.utils.data.DataLoader]:
+    return {
+        "train": torch.utils.data.DataLoader(
+            datasets["train"],
+            batch_size=batch_size,
+            shuffle=True,
+            num_workers=num_workers,
+            drop_last=True,
+        ),
+        "val": torch.utils.data.DataLoader(
+            datasets["val"],
+            batch_size=batch_size,
+            shuffle=False,
+            num_workers=num_workers,
+            drop_last=False,
+        ),
+        "test": torch.utils.data.DataLoader(
+            datasets["test"],
+            batch_size=batch_size,
+            shuffle=False,
+            num_workers=num_workers,
+            drop_last=False,
+        ),
+    }
