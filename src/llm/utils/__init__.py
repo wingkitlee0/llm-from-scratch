@@ -1,3 +1,4 @@
+from .common import get_gpt_model, get_tokenizer
 from .text_utils import (
     generate,
     generate_text_simple,
@@ -6,6 +7,8 @@ from .text_utils import (
 )
 
 __all__ = [
+    "get_gpt_model",
+    "get_tokenizer",
     "generate",
     "generate_text_simple",
     "text_to_token_ids",

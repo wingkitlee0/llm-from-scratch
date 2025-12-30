@@ -1,40 +1,30 @@
-import tiktoken
+from typing import TYPE_CHECKING, Callable
+
 import torch
 
-from llm.common import get_gpt_model, get_tokenizer
+from llm.common.evaluate import evaluate_model
 from llm.configs.gpt_config import GPT_CONFIG_124M
-from llm.demo.load_data import (
+from llm.gpt2.models import GPTModel
+from llm.gpt2.pretraining.basic import (
     calc_loss_batch,
     calc_loss_loader,
     get_train_and_val_loaders,
 )
-from llm.gpt2.models import GPTModel
 from llm.utils import (
     generate_text_simple,
+    get_gpt_model,
+    get_tokenizer,
     text_to_token_ids,
     token_ids_to_text,
 )
 
-
-def evaluate_model(
-    model: torch.nn.Module,
-    train_loader: torch.utils.data.DataLoader,
-    val_loader: torch.utils.data.DataLoader,
-    device: torch.device,
-    eval_iter: int,
-):
-    model.eval()
-    with torch.no_grad():
-        train_loss = calc_loss_loader(train_loader, model, device, eval_iter)
-        val_loss = calc_loss_loader(val_loader, model, device, eval_iter)
-
-    model.train()
-    return train_loss, val_loss
+if TYPE_CHECKING:
+    import tiktoken
 
 
 def generate_and_print_sample(
     model: GPTModel,
-    tokenizer: tiktoken.Encoding,
+    tokenizer: "tiktoken.Encoding",
     device: torch.device,
     start_context: str,
 ):
@@ -63,7 +53,8 @@ def train_model_simple(
     eval_freq: int,
     eval_iter: int,
     start_context: str,
-    tokenizer: tiktoken.Encoding,
+    tokenizer: "tiktoken.Encoding",
+    on_epoch_end_fn: Callable[[GPTModel, "tiktoken.Encoding", torch.device, str], None],
 ):
     train_losses, val_losses, track_tokens_seen = [], [], []
     tokens_seen = 0
@@ -85,24 +76,25 @@ def train_model_simple(
             global_step += 1
 
             if global_step % eval_freq == 0:
-                train_loss, val_loss = evaluate_model(
+                evaluate_result = evaluate_model(
                     model,
                     train_loader,
                     val_loader,
                     device,
                     eval_iter,
+                    calc_loss_loader_fn=calc_loss_loader,
                 )
-                train_losses.append(train_loss)
-                val_losses.append(val_loss)
+                train_losses.append(evaluate_result.train_loss)
+                val_losses.append(evaluate_result.val_loss)
                 track_tokens_seen.append(tokens_seen)
                 tokens_seen = 0
                 global_step = 0
 
                 print(
-                    f"Epoch {epoch + 1}, Step {global_step}, Train Loss: {train_loss:.4f}, Val Loss: {val_loss:.4f}"
+                    f"Epoch {epoch + 1}, Step {global_step}, Train Loss: {evaluate_result.train_loss:.4f}, Val Loss: {evaluate_result.val_loss:.4f}"
                 )
 
-        generate_and_print_sample(model, tokenizer, device, start_context)
+        on_epoch_end_fn(model, tokenizer, device, start_context)
 
     return train_losses, val_losses, track_tokens_seen
 
@@ -120,7 +112,6 @@ def main():
         batch_size=2,
         max_length=GPT_CONFIG_124M["context_length"],
         stride=GPT_CONFIG_124M["context_length"],
-        drop_last=True,
         shuffle=True,
         num_workers=0,
     )
@@ -144,6 +135,7 @@ def main():
         eval_iter=5,
         start_context="Every effort moves you",
         tokenizer=tokenizer,
+        on_epoch_end_fn=generate_and_print_sample,
     )
 
 
