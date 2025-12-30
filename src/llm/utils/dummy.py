@@ -1,10 +1,17 @@
-import tiktoken
+from typing import TYPE_CHECKING, Optional
+
 import torch
 from torch.nn.utils.rnn import pad_sequence
 
+from llm.utils import get_tokenizer
 
-def get_dummy_batch() -> torch.Tensor:
-    tokenizer = tiktoken.get_encoding("gpt2")
+if TYPE_CHECKING:
+    import tiktoken
+
+
+def get_dummy_batch(tokenizer: Optional["tiktoken.Encoding"] = None) -> torch.Tensor:
+    tokenizer = tokenizer or get_tokenizer()
+
     texts = [
         "Hello, world!",
         "Hello, how are you?",

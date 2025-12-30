@@ -1,6 +1,6 @@
 from llm.configs.gpt_config import GPT_CONFIG_124M
-from llm.demo.dummy_batch import get_dummy_batch
-from llm.placeholders import DummyGPTModel
+from llm.gpt2.placeholders import DummyGPTModel
+from llm.utils import get_dummy_batch
 
 
 def main():
