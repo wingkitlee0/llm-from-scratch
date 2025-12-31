@@ -3,7 +3,7 @@ from typing import TYPE_CHECKING, Callable
 import torch
 
 from llm.common.evaluate import evaluate_model
-from llm.configs.gpt_config import GPT_CONFIG_124M
+from llm.configs.gpt_config import DEFAULT_GPT_CONFIG
 from llm.gpt2.models import GPTModel
 from llm.gpt2.pretraining.basic import (
     calc_loss_batch,
@@ -110,8 +110,8 @@ def main():
         file_path="data/the-verdict.txt",
         tokenizer=tokenizer,
         batch_size=2,
-        max_length=GPT_CONFIG_124M["context_length"],
-        stride=GPT_CONFIG_124M["context_length"],
+        max_length=DEFAULT_GPT_CONFIG["context_length"],
+        stride=DEFAULT_GPT_CONFIG["context_length"],
         shuffle=True,
         num_workers=0,
     )

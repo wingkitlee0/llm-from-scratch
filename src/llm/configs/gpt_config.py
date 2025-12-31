@@ -1,4 +1,4 @@
-GPT_CONFIG_124M = {
+DEFAULT_GPT_CONFIG = {
     "vocab_size": 50257,  # Vocabulary size
     # "context_length": 1024,  # Context length
     "context_length": 256,

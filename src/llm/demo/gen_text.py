@@ -1,7 +1,7 @@
 import tiktoken
 import torch
 
-from llm.configs.gpt_config import GPT_CONFIG_124M
+from llm.configs.gpt_config import DEFAULT_GPT_CONFIG
 from llm.gpt2.models import GPTModel
 from llm.utils import generate_text_simple
 
@@ -16,14 +16,14 @@ def main():
     encoded_tensor = torch.tensor(encoded).unsqueeze(0)
     print(f"{encoded_tensor.shape=}")
 
-    model = GPTModel(GPT_CONFIG_124M)
+    model = GPTModel(DEFAULT_GPT_CONFIG)
     model.eval()
 
     output = generate_text_simple(
         model,
         encoded_tensor,
         max_new_tokens=6,
-        context_size=GPT_CONFIG_124M["context_length"],
+        context_size=DEFAULT_GPT_CONFIG["context_length"],
     )
     print(f"{output.shape=}")
     print(output)

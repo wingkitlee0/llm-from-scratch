@@ -1,6 +1,6 @@
 import torch
 
-from llm.configs.gpt_config import GPT_CONFIG_124M
+from llm.configs.gpt_config import DEFAULT_GPT_CONFIG
 from llm.gpt2.modules import TransformerBlock
 
 
@@ -9,7 +9,7 @@ def main():
 
     # shape = (batch_size, num_tokens, emb_dim)
     x = torch.rand(2, 4, 768)
-    block = TransformerBlock(GPT_CONFIG_124M)
+    block = TransformerBlock(DEFAULT_GPT_CONFIG)
     out = block(x)
 
     print(x.shape)

@@ -1,4 +1,4 @@
-from llm.configs.gpt_config import GPT_CONFIG_124M
+from llm.configs.gpt_config import DEFAULT_GPT_CONFIG
 from llm.gpt2.models import GPTModel
 
 from .configs import DEFAULT_MODEL_NAME, MODEL_CONFIGS
@@ -17,7 +17,7 @@ def get_model_download_size(model_name: str) -> str:
 
 
 def get_pretrained_gpt2_model(model_name: str) -> tuple[GPTModel, dict]:
-    new_config = GPT_CONFIG_124M.copy()
+    new_config = DEFAULT_GPT_CONFIG.copy()
     new_config.update(MODEL_CONFIGS[model_name]["config"])
     new_config.update({"context_length": 1024})
     new_config.update({"qkv_bias": True})
@@ -33,3 +33,10 @@ def get_gpt2_model_with_weights(
     model, model_config = get_pretrained_gpt2_model(model_name=model_name)
     load_weights_into_gpt2(model, params)
     return model, model_config
+
+
+def get_gpt2_model_config_by_name(model_name: str) -> dict:
+    new_config = DEFAULT_GPT_CONFIG.copy()
+    new_config.update(MODEL_CONFIGS[model_name]["config"])
+
+    return new_config
