@@ -44,7 +44,12 @@ class GPTLightningModule(L.LightningModule):
         loss = F.cross_entropy(logits.flatten(0, 1), targets.flatten())
 
         self.log(
-            "val_loss", loss, prog_bar=True, on_step=True, on_epoch=True, sync_dist=True
+            "val_loss",
+            loss,
+            prog_bar=True,
+            on_step=False,
+            on_epoch=True,
+            sync_dist=True,
         )
         return loss
 
