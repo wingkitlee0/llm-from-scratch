@@ -1,25 +1,9 @@
-import os
-import time
-from typing import Optional, Dict, Any, Iterator
-import argparse
-import lightning as L
-import ray
-import ray.data
+from typing import Dict
+
+import numpy as np
 import tiktoken
-import torch
-import torch.nn.functional as F
-from torch.utils.data import IterableDataset, DataLoader
 
 from llm.configs.gpt_config import DEFAULT_GPT_CONFIG
-from llm.gpt2.models import GPTModel
-from llm.gpt2.pretrained.configs import (
-    DEFAULT_MODEL_NAME,
-    MODEL_CONFIGS,
-    MODEL_CONFIG_KEYS,
-)
-from llm.gpt2.pretrained.utils import get_gpt2_model_config_by_name
-import numpy as np
-
 
 
 def tokenize_batch(batch: Dict[str, np.ndarray]) -> Dict[str, np.ndarray]:
@@ -73,15 +57,16 @@ def tokenize_batch(batch: Dict[str, np.ndarray]) -> Dict[str, np.ndarray]:
                 all_labels.append(target_chunk)
 
     import numpy as np
+
     # If no results, Ray handles empty batches gracefully usually,
     # but let's ensure we return empty arrays with correct types if empty
     if not all_input_ids:
         return {
             "input_ids": np.array([], dtype=np.int64),
-            "labels": np.array([], dtype=np.int64)
+            "labels": np.array([], dtype=np.int64),
         }
 
     return {
         "input_ids": np.array(all_input_ids, dtype=np.int64),
-        "labels": np.array(all_labels, dtype=np.int64)
+        "labels": np.array(all_labels, dtype=np.int64),
     }

@@ -38,5 +38,7 @@ def get_gpt2_model_with_weights(
 def get_gpt2_model_config_by_name(model_name: str) -> dict:
     new_config = DEFAULT_GPT_CONFIG.copy()
     new_config.update(MODEL_CONFIGS[model_name]["config"])
+    # Ensure context_length is set to GPT-2 standard
+    new_config["context_length"] = 1024
 
     return new_config
