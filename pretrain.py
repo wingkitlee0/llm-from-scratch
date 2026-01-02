@@ -10,7 +10,7 @@ import ray.data
 import ray.train
 import torch
 from lightning.pytorch.loggers import CSVLogger, MLFlowLogger
-from ray.train import FailureConfig, RunConfig, ScalingConfig, CheckpointConfig
+from ray.train import FailureConfig, RunConfig, ScalingConfig
 from ray.train.lightning import RayDDPStrategy, RayLightningEnvironment, prepare_trainer
 from ray.train.torch import TorchTrainer
 
@@ -21,8 +21,9 @@ from llm.gpt2.pretrained.configs import (
 from llm.gpt2.pretrained.utils import get_gpt2_model_config_by_name
 from llm.pretrain.callbacks import (
     CustomRayTrainReportCallback,
-    TrainLossLoggingCallback,
+    IntervalConfig,
     TimingDebugCallback,
+    TrainLossLoggingCallback,
 )
 from llm.pretrain.dataset import tokenize_batch
 from llm.pretrain.module import GPTLightningModule
@@ -65,7 +66,7 @@ def train_func(config: dict[str, Any]):
         max_epochs=1,
         accelerator="auto",
         devices=1,
-        log_every_n_steps=10,
+        log_every_n_steps=1,
         plugins=RayLightningEnvironment(),
         logger=[
             MLFlowLogger(
@@ -74,20 +75,22 @@ def train_func(config: dict[str, Any]):
             ),
             CSVLogger(
                 save_dir="logs/csv",
-                flush_logs_every_n_steps=10,
+                flush_logs_every_n_steps=1,
             ),
         ],
         callbacks=[
             TimingDebugCallback(),
-            CustomRayTrainReportCallback(every_n_batches=512),
+            CustomRayTrainReportCallback(
+                interval=IntervalConfig(every_n_batches=48 * 8)
+            ),
             TrainLossLoggingCallback(
-                every_n_batches=48,
+                interval=IntervalConfig(every_n_batches=48),
                 verbose=True,
             ),
         ],
         accumulate_grad_batches=48,  # 48 * 8 = 384 batches
         limit_val_batches=50,
-        val_check_interval=50,  # batches
+        val_check_interval=48 * 8,  # batches
         enable_progress_bar=True,
         enable_checkpointing=False,
     )
@@ -96,10 +99,9 @@ def train_func(config: dict[str, Any]):
 
     print("Starting training...")
 
-    # Check for checkpoint from either:
-    # 1. Manual restore via train_loop_config["restore_checkpoint"]
-    # 2. Automatic Ray Train checkpoint from ray.train.get_checkpoint()
-    checkpoint = config.get("restore_checkpoint") or ray.train.get_checkpoint()
+    # Ray Train v2: Automatic checkpoint restoration via RunConfig
+    # ray.train.get_checkpoint() returns the latest checkpoint if storage_path + name match
+    checkpoint = ray.train.get_checkpoint()
 
     if checkpoint:
         print("Loading checkpoint from Ray Train...")
@@ -183,7 +185,6 @@ def main(data_path: str, model_name: str, restore_path: str | None = None):
     with mlflow.start_run(
         log_system_metrics=True,
     ) as run:
-        # Ray Train v2: Pass checkpoint via train_loop_config for manual restoration
         train_loop_config = {
             "model_config": model_config,
             "train_batch_size": 12,
@@ -191,28 +192,30 @@ def main(data_path: str, model_name: str, restore_path: str | None = None):
             "mlflow_run_id": run.info.run_id,
         }
 
+        # Ray Train v2: Configure RunConfig with storage_path and name for automatic checkpoint restoration
         if restore_path:
-            # Find the latest checkpoint in the restore_path directory
-            print(f"Looking for checkpoints in: {restore_path}")
-            checkpoint_dirs = [
-                d
-                for d in os.listdir(restore_path)
-                if d.startswith("checkpoint_")
-                and os.path.isdir(os.path.join(restore_path, d))
-            ]
-            if checkpoint_dirs:
-                # Sort by name (which includes timestamp) to get the latest
-                latest_checkpoint = sorted(checkpoint_dirs)[-1]
-                checkpoint_path = os.path.join(restore_path, latest_checkpoint)
-                print(f"Found checkpoint: {checkpoint_path}")
+            # Extract storage path and experiment name from restore_path
+            # restore_path format: /path/to/storage/experiment_name
+            # Ray Train will automatically find and load the latest checkpoint
+            restore_path = os.path.abspath(restore_path)
+            storage_path = os.path.dirname(restore_path)
+            experiment_name = os.path.basename(restore_path)
 
-                from ray.train import Checkpoint
+            print(f"Resuming training from: {restore_path}")
+            print(f"  storage_path: {storage_path}")
+            print(f"  experiment_name: {experiment_name}")
+            print("Ray Train will automatically load the latest checkpoint")
 
-                train_loop_config["restore_checkpoint"] = Checkpoint.from_directory(
-                    checkpoint_path
-                )
-            else:
-                print(f"Warning: No checkpoints found in {restore_path}")
+            run_config = RunConfig(
+                storage_path=storage_path,
+                name=experiment_name,
+                failure_config=FailureConfig(3),
+            )
+        else:
+            # New training - use default storage (./ray_results)
+            run_config = RunConfig(
+                failure_config=FailureConfig(3),
+            )
 
         trainer = TorchTrainer(
             train_func,
@@ -229,9 +232,7 @@ def main(data_path: str, model_name: str, restore_path: str | None = None):
                     "CPU": 6,
                 },
             ),
-            run_config=RunConfig(
-                failure_config=FailureConfig(3),
-            ),
+            run_config=run_config,
         )
 
         result = trainer.fit()
