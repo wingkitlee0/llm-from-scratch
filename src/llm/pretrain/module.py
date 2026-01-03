@@ -4,17 +4,27 @@ import lightning as L
 import torch
 import torch.nn.functional as F
 
-from llm.gpt2.models import GPTModel
+from llm.gpt2.models import GPTModel, GPTModelV2
 
 
 class GPTLightningModule(L.LightningModule):
-    def __init__(self, config: Dict[str, Any]):
+    @classmethod
+    def create(cls, config: Dict[str, Any]) -> "GPTLightningModule":
+        if config.get("enable_flash_att", False):
+            model = GPTModelV2(config)
+        else:
+            model = GPTModel(config)
+        return cls(model=model, config=config)
+
+    def __init__(self, model, config: Dict[str, Any]):
         """
         PyTorch Lightning module for GPT-2 pretraining.
         """
         super().__init__()
-        self.save_hyperparameters()
-        self.model = GPTModel(config)
+        # Must ignore model since it's not a hyperparameter and we are
+        # already saving it in the checkpoint.
+        self.save_hyperparameters(ignore=["model"])
+        self.model = model
         self.config = config
 
     def forward(self, x):
