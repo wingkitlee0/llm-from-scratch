@@ -64,6 +64,11 @@ def train_func(config: dict[str, Any]):
     # 5. Model & Trainer
     model = GPTLightningModule.create(config["model_config"])
 
+    # 576 batches per step
+    # this is the number of batch_steps per optimizer step
+    num_batches_per_step = 576 // config["train_batch_size"]
+    print(f"num_batches_per_step: {num_batches_per_step}")
+
     trainer = L.Trainer(
         strategy=RayDDPStrategy(),
         max_epochs=1,
@@ -85,16 +90,16 @@ def train_func(config: dict[str, Any]):
         callbacks=[
             TimingDebugCallback(),
             CustomRayTrainReportCallback(
-                interval=IntervalConfig(every_n_batches=48 * 8)
+                interval=IntervalConfig(every_n_batches=num_batches_per_step * 8)  # checkpoint every 8 steps
             ),
-            TrainLossLoggingCallback(
-                interval=IntervalConfig(every_n_batches=48),
-                verbose=True,
-            ),
+            # TrainLossLoggingCallback(
+            #     interval=IntervalConfig(every_n_batches=config["train_batch_size"]),
+            #     verbose=True,
+            # ),
         ],
-        accumulate_grad_batches=48,  # 12 * 48 = 576 batches
-        limit_val_batches=50,
-        val_check_interval=48 * 8,  # batches
+        accumulate_grad_batches=num_batches_per_step,
+        limit_val_batches=10,
+        val_check_interval=num_batches_per_step * 8,  # unit of batches
         enable_progress_bar=True,
         enable_checkpointing=False,
     )
@@ -206,7 +211,7 @@ def main(data_path: str, model_name: str, restore_path: str | None = None, new_r
     ) as run:
         train_loop_config = {
             "model_config": model_config,
-            "train_batch_size": 12,
+            "train_batch_size": 32,
             "val_batch_size": 64,
             "mlflow_run_id": run.info.run_id,
             "precision": "bf16-mixed",
