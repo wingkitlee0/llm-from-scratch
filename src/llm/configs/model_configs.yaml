@@ -32,6 +32,7 @@ gpt2-small-gqa:
     emb_dim: 768
     n_layers: 12
     n_heads: 12
-    num_kv_heads: 12
     enable_flash_att: True
-    enable_gqa: True
+    flash_att_options:
+      enable_gqa: True
+      num_kv_heads: 6

@@ -59,7 +59,7 @@ def train_func(config: dict[str, Any]):
     )
 
     # 5. Model & Trainer
-    model = GPTLightningModule(config["model_config"])
+    model = GPTLightningModule.create(config["model_config"])
 
     trainer = L.Trainer(
         strategy=RayDDPStrategy(),
@@ -89,7 +89,7 @@ def train_func(config: dict[str, Any]):
                 verbose=True,
             ),
         ],
-        accumulate_grad_batches=48,  # 48 * 8 = 384 batches
+        accumulate_grad_batches=48,  # 12 * 48 = 576 batches
         limit_val_batches=50,
         val_check_interval=48 * 8,  # batches
         enable_progress_bar=True,
