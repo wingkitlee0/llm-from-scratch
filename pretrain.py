@@ -10,7 +10,7 @@ import ray.data
 import ray.train
 import torch
 from lightning.pytorch.loggers import CSVLogger, MLFlowLogger
-from ray.train import Checkpoint, FailureConfig, RunConfig, ScalingConfig
+from ray.train import Checkpoint, CheckpointConfig, FailureConfig, RunConfig, ScalingConfig
 from ray.train.lightning import RayDDPStrategy, RayLightningEnvironment, prepare_trainer
 from ray.train.torch import TorchTrainer
 
@@ -249,6 +249,13 @@ def main(data_path: str, model_name: str, restore_path: str | None = None, new_r
     with mlflow.start_run(
         log_system_metrics=True,
     ) as run:
+
+        checkpoint_config = CheckpointConfig(
+            num_to_keep=10,
+            checkpoint_score_attribute="val_loss",
+            checkpoint_score_order="min",
+        )
+
         # Ray Train v2: Configure RunConfig for checkpoint restoration
         if restore_path:
             restore_path = os.path.abspath(restore_path)
@@ -268,6 +275,7 @@ def main(data_path: str, model_name: str, restore_path: str | None = None, new_r
                 run_config = RunConfig(
                     storage_path=storage_path,
                     failure_config=FailureConfig(3),
+                    checkpoint_config=checkpoint_config,
                 )
                 restore_checkpoint_path = checkpoint_path
             else:
@@ -281,6 +289,7 @@ def main(data_path: str, model_name: str, restore_path: str | None = None, new_r
                     storage_path=storage_path,
                     name=experiment_name,
                     failure_config=FailureConfig(3),
+                    checkpoint_config=checkpoint_config,
                 )
                 restore_checkpoint_path = restore_path
         else:
