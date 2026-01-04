@@ -14,7 +14,6 @@ from ray.train import Checkpoint, FailureConfig, RunConfig, ScalingConfig
 from ray.train.lightning import RayDDPStrategy, RayLightningEnvironment, prepare_trainer
 from ray.train.torch import TorchTrainer
 
-from llm.gpt2.models import GPTModel
 from llm.gpt2.pretrained.configs import (
     DEFAULT_MODEL_NAME,
     MODEL_CONFIG_KEYS,
@@ -28,15 +27,33 @@ from llm.pretrain.callbacks import (
 )
 from llm.pretrain.dataset import tokenize_batch
 from llm.pretrain.module import GPTLightningModule
+from llm.train_utils.configs import TrainLoopConfig
 
 DEFAULT_DATA_PATH = "./data/en-parquet"
 
+
+# 1. Define a filter that blocks all messages
+class MuteAlembic(logging.Filter):
+    def filter(self, record):
+        return False
+
+# 2. Attach it to the alembic logger
+# This object persists even if MLflow/Alembic tries to reset the config
+logging.getLogger("alembic.runtime.migration").addFilter(MuteAlembic())
 logging.getLogger("mlflow.system_metrics.metrics.gpu_monitor").setLevel(logging.ERROR)
 
 logger = logging.getLogger(__name__)
 
 
+def setup_logging_in_worker():
+
+    logging.getLogger("alembic.runtime.migration").addFilter(MuteAlembic())
+
+
 def train_func(config: dict[str, Any]):
+    # Reconstruct Pydantic model from dict
+    train_config = TrainLoopConfig(**config)
+
     torch.set_float32_matmul_precision("high")
     logging.getLogger("mlflow.system_metrics.metrics.gpu_monitor").setLevel(
         logging.ERROR
@@ -49,38 +66,38 @@ def train_func(config: dict[str, Any]):
     assert val_data is not None
 
     train_loader = train_data.iter_torch_batches(
-        batch_size=config["train_batch_size"],
+        batch_size=train_config.train_batch_size,
         dtypes={"input_ids": torch.long, "labels": torch.long},
         drop_last=True,
         prefetch_batches=1,
     )
     val_loader = val_data.iter_torch_batches(
-        batch_size=config["val_batch_size"],
+        batch_size=train_config.val_batch_size,
         dtypes={"input_ids": torch.long, "labels": torch.long},
         drop_last=True,
         prefetch_batches=1,
     )
 
     # 5. Model & Trainer
-    model = GPTLightningModule.create(config["model_config"])
+    model = GPTLightningModule.create(train_config.gpt2_config)
 
     # 576 batches per step
     # this is the number of batch_steps per optimizer step
-    num_batches_per_step = 576 // config["train_batch_size"]
+    num_batches_per_step = 576 // train_config.train_batch_size
     print(f"num_batches_per_step: {num_batches_per_step}")
 
     trainer = L.Trainer(
         strategy=RayDDPStrategy(),
-        max_epochs=1,
+        max_epochs=train_config.max_epochs,
         accelerator="auto",
         devices=1,
         log_every_n_steps=1,
         plugins=RayLightningEnvironment(),
-        precision=config["precision"],
+        precision=train_config.precision,  # type: ignore
         logger=[
             MLFlowLogger(
                 experiment_name="pretrain",
-                run_id=config["mlflow_run_id"],
+                run_id=train_config.mlflow_run_id,
             ),
             CSVLogger(
                 save_dir="logs/csv",
@@ -109,9 +126,13 @@ def train_func(config: dict[str, Any]):
     print("Starting training...")
 
     # Check for checkpoint from either:
-    # 1. Manual restore via train_loop_config["restore_checkpoint"] (when --new-run is used)
+    # 1. Manual restore via train_loop_config["restore_checkpoint_path"] (when --new-run is used)
     # 2. Automatic Ray Train checkpoint from ray.train.get_checkpoint() (when resuming same experiment)
-    checkpoint = config.get("restore_checkpoint") or ray.train.get_checkpoint()
+    checkpoint = None
+    if train_config.restore_checkpoint_path:
+        checkpoint = Checkpoint.from_directory(train_config.restore_checkpoint_path)
+    else:
+        checkpoint = ray.train.get_checkpoint()
 
     if checkpoint:
         print("Loading checkpoint from Ray Train...")
@@ -148,7 +169,25 @@ def find_latest_checkpoint_manually(restore_path: str) -> str:
     raise ValueError(f"No checkpoints found in: {restore_path}")
 
 
-def main(data_path: str, model_name: str, restore_path: str | None = None, new_run: bool = False):
+def get_scaling_config(smoke_test: bool = False) -> ScalingConfig:
+    if smoke_test:
+        return ScalingConfig(
+            num_workers=1,
+            use_gpu=False,
+            resources_per_worker={"CPU": 6},
+        )
+    else:
+        return ScalingConfig(
+            num_workers=1,
+            use_gpu=True,
+            resources_per_worker={
+                "GPU": 1,
+                "CPU": 6,
+            },
+        )
+
+
+def main(data_path: str, model_name: str, restore_path: str | None = None, new_run: bool = False, smoke_test: bool = False):
     torch.set_float32_matmul_precision("high")
     torch.backends.cuda.matmul.allow_tf32 = True
     torch.backends.cudnn.allow_tf32 = True
@@ -166,8 +205,9 @@ def main(data_path: str, model_name: str, restore_path: str | None = None, new_r
             "env_vars": {
                 "MLFLOW_TRACKING_URI": mlflow_tracking_uri,
             },
+            "worker_process_setup_hook": setup_logging_in_worker,
         },
-        object_store_memory=50 * 1024 * 1024 * 1024,  # 50GB
+        # object_store_memory=50 * 1024 * 1024 * 1024,  # 50GB
     )
 
     ctx = ray.data.DataContext.get_current()
@@ -209,14 +249,6 @@ def main(data_path: str, model_name: str, restore_path: str | None = None, new_r
     with mlflow.start_run(
         log_system_metrics=True,
     ) as run:
-        train_loop_config = {
-            "model_config": model_config,
-            "train_batch_size": 32,
-            "val_batch_size": 64,
-            "mlflow_run_id": run.info.run_id,
-            "precision": "bf16-mixed",
-        }
-
         # Ray Train v2: Configure RunConfig for checkpoint restoration
         if restore_path:
             restore_path = os.path.abspath(restore_path)
@@ -231,13 +263,13 @@ def main(data_path: str, model_name: str, restore_path: str | None = None, new_r
 
                 checkpoint_path = find_latest_checkpoint_manually(restore_path)
                 print(f"  Loading checkpoint: {checkpoint_path}")
-                train_loop_config["restore_checkpoint"] = Checkpoint.from_directory(checkpoint_path)
 
                 # Create new experiment (don't set name, let Ray Train generate one)
                 run_config = RunConfig(
                     storage_path=storage_path,
                     failure_config=FailureConfig(3),
                 )
+                restore_checkpoint_path = checkpoint_path
             else:
                 # Resume in the same experiment directory
                 print(f"Resuming training from: {restore_path}")
@@ -250,27 +282,33 @@ def main(data_path: str, model_name: str, restore_path: str | None = None, new_r
                     name=experiment_name,
                     failure_config=FailureConfig(3),
                 )
+                restore_checkpoint_path = restore_path
         else:
             # New training - use default storage (./ray_results)
+            restore_checkpoint_path = None
             run_config = RunConfig(
                 failure_config=FailureConfig(3),
             )
 
+        if smoke_test:
+            train_loop_config = TrainLoopConfig.create_for_smoketest(
+                model_config, run.info.run_id,
+                restore_checkpoint_path=restore_checkpoint_path,
+            )
+        else:
+            train_loop_config = TrainLoopConfig.create_for_dgx_spark(
+                model_config, run.info.run_id,
+                restore_checkpoint_path=restore_checkpoint_path,
+            )
+
         trainer = TorchTrainer(
             train_func,
-            train_loop_config=train_loop_config,
+            train_loop_config=train_loop_config.model_dump(),
             datasets={
                 "train": train_ds,
                 "val": val_ds,
             },
-            scaling_config=ScalingConfig(
-                num_workers=1,
-                use_gpu=True,
-                resources_per_worker={
-                    "GPU": 1,
-                    "CPU": 6,
-                },
-            ),
+            scaling_config=get_scaling_config(smoke_test),
             run_config=run_config,
         )
 
@@ -306,6 +344,11 @@ if __name__ == "__main__":
         help="Create a new experiment run while loading checkpoint from restore-path. "
              "Useful for continuing training as a separate experiment.",
     )
+    parser.add_argument(
+        "--smoke-test",
+        action="store_true",
+        help="Run a smoke test",
+    )
     args = parser.parse_args()
 
     main(
@@ -313,4 +356,5 @@ if __name__ == "__main__":
         model_name=args.model,
         restore_path=args.restore_path,
         new_run=args.new_run,
+        smoke_test=args.smoke_test,
     )
