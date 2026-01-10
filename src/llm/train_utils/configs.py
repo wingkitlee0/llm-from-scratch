@@ -4,8 +4,8 @@ from pydantic import BaseModel
 
 
 DEFAULT_TRAIN_LOOP_CONFIG_FOR_DGX_SPARK = {
-    "train_batch_size": 8,
-    "val_batch_size": 32,
+    "train_batch_size": 32,
+    "val_batch_size": 64,
     "precision": "bf16-mixed",
     "max_epochs": 1,
 }

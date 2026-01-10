@@ -70,6 +70,7 @@ def train_func(config: dict[str, Any]):
         dtypes={"input_ids": torch.long, "labels": torch.long},
         drop_last=True,
         prefetch_batches=1,
+        local_shuffle_buffer_size=20000,
     )
     val_loader = val_data.iter_torch_batches(
         batch_size=train_config.val_batch_size,
@@ -291,12 +292,13 @@ def main(data_path: str, model_name: str, restore_path: str | None = None, new_r
                     failure_config=FailureConfig(3),
                     checkpoint_config=checkpoint_config,
                 )
-                restore_checkpoint_path = restore_path
+                restore_checkpoint_path = None
         else:
             # New training - use default storage (./ray_results)
             restore_checkpoint_path = None
             run_config = RunConfig(
                 failure_config=FailureConfig(3),
+                checkpoint_config=checkpoint_config,
             )
 
         if smoke_test:
