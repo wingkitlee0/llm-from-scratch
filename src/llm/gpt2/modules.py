@@ -1,4 +1,5 @@
 from typing import Optional
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -229,7 +230,9 @@ class MultiHeadAttentionV2(nn.Module):
         # Determine number of KV heads
         if self.enable_gqa:
             num_kv_heads = flash_att_options["num_kv_heads"]
-            assert num_heads % num_kv_heads == 0, "num_heads must be divisible by num_kv_heads"
+            assert num_heads % num_kv_heads == 0, (
+                "num_heads must be divisible by num_kv_heads"
+            )
             self.num_kv_heads = num_kv_heads
         else:
             # Standard MHA: same number of KV heads as query heads
@@ -288,7 +291,7 @@ class MultiHeadAttentionV2(nn.Module):
             attn_mask=None,
             dropout_p=self.dropout.p if self.training else 0.0,
             is_causal=True,
-            scale=self.head_dim ** -0.5,
+            scale=self.head_dim**-0.5,
             enable_gqa=self.enable_gqa,
         )
 
