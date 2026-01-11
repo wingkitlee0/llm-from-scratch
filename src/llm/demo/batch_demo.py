@@ -1,6 +1,7 @@
-from llm.configs.gpt_config import GPT_CONFIG_124M
-from llm.demo.dummy_batch import get_dummy_batch
 from llm.placeholders import DummyGPTModel
+
+from llm.configs.gpt_config import DEFAULT_GPT_CONFIG
+from llm.demo.dummy_batch import get_dummy_batch
 
 
 def main():
@@ -9,7 +10,7 @@ def main():
     print(batch.shape)
     print(batch)
 
-    model = DummyGPTModel(GPT_CONFIG_124M)
+    model = DummyGPTModel(DEFAULT_GPT_CONFIG)
     logits = model(batch)
     print(logits.shape)
     # print(logits)

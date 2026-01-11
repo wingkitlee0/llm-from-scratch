@@ -1,8 +1,8 @@
 import torch
 
-from llm.configs.gpt_config import GPT_CONFIG_124M
+from llm.configs.gpt_config import DEFAULT_GPT_CONFIG
 from llm.demo.dummy_batch import get_dummy_batch
-from llm.gpt_models import GPTModel
+from llm.gpt2.models import GPTModel
 
 
 def get_num_params(model: torch.nn.Module) -> int:
@@ -12,7 +12,7 @@ def get_num_params(model: torch.nn.Module) -> int:
 def main():
     torch.manual_seed(1234)
 
-    model = GPTModel(GPT_CONFIG_124M)
+    model = GPTModel(DEFAULT_GPT_CONFIG)
 
     batch = get_dummy_batch()
     print(batch[:2])

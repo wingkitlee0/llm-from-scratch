@@ -1,7 +1,7 @@
 import numpy as np
 import torch
 
-from llm.gpt_models import GPTModel
+from llm.gpt2.models import GPTModel
 
 
 def assign(left, right):
@@ -11,7 +11,7 @@ def assign(left, right):
     return torch.nn.Parameter(torch.tensor(right))
 
 
-def load_weights_into_gpt(gpt: GPTModel, params: dict) -> GPTModel:
+def load_weights_into_gpt2(gpt: GPTModel, params: dict) -> GPTModel:
     gpt.pos_emb.weight = assign(gpt.pos_emb.weight, params["wpe"])
     gpt.tok_emb.weight = assign(gpt.tok_emb.weight, params["wte"])
     for b in range(len(params["blocks"])):

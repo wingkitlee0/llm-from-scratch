@@ -1,11 +1,11 @@
-import tiktoken
 import torch
 
-from llm.demo.text_utils import (
+from llm.utils import (
+    get_gpt_model,
+    get_tokenizer,
     text_to_token_ids,
     token_ids_to_text,
 )
-from llm.top_level import get_gpt_model
 
 
 def main():
@@ -14,7 +14,7 @@ def main():
         "I really like",
     ]
 
-    tokenizer = tiktoken.get_encoding("gpt2")
+    tokenizer = get_tokenizer()
     input_token_ids = text_to_token_ids(input_texts, tokenizer)
     print(f"{input_token_ids.shape=}")
     print(f"{input_token_ids=}")
