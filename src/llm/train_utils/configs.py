@@ -2,7 +2,6 @@ from typing import Any
 
 from pydantic import BaseModel
 
-
 DEFAULT_TRAIN_LOOP_CONFIG_FOR_DGX_SPARK = {
     "train_batch_size": 32,
     "val_batch_size": 64,
@@ -42,7 +41,9 @@ class TrainLoopConfig(BaseModel):
         )
 
     @classmethod
-    def create_for_smoketest(cls, gpt2_config: dict[str, Any], mlflow_run_id: str, **kwargs) -> "TrainLoopConfig":
+    def create_for_smoketest(
+        cls, gpt2_config: dict[str, Any], mlflow_run_id: str, **kwargs
+    ) -> "TrainLoopConfig":
         return cls.create(
             gpt2_config=gpt2_config,
             mlflow_run_id=mlflow_run_id,

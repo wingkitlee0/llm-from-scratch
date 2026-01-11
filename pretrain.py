@@ -10,7 +10,13 @@ import ray.data
 import ray.train
 import torch
 from lightning.pytorch.loggers import CSVLogger, MLFlowLogger
-from ray.train import Checkpoint, CheckpointConfig, FailureConfig, RunConfig, ScalingConfig
+from ray.train import (
+    Checkpoint,
+    CheckpointConfig,
+    FailureConfig,
+    RunConfig,
+    ScalingConfig,
+)
 from ray.train.lightning import RayDDPStrategy, RayLightningEnvironment, prepare_trainer
 from ray.train.torch import TorchTrainer
 
@@ -23,7 +29,6 @@ from llm.pretrain.callbacks import (
     CustomRayTrainReportCallback,
     IntervalConfig,
     TimingDebugCallback,
-    TrainLossLoggingCallback,
 )
 from llm.pretrain.dataset import tokenize_batch
 from llm.pretrain.module import GPTLightningModule
@@ -37,6 +42,7 @@ class MuteAlembic(logging.Filter):
     def filter(self, record):
         return False
 
+
 # 2. Attach it to the alembic logger
 # This object persists even if MLflow/Alembic tries to reset the config
 logging.getLogger("alembic.runtime.migration").addFilter(MuteAlembic())
@@ -46,7 +52,6 @@ logger = logging.getLogger(__name__)
 
 
 def setup_logging_in_worker():
-
     logging.getLogger("alembic.runtime.migration").addFilter(MuteAlembic())
 
 
@@ -108,7 +113,9 @@ def train_func(config: dict[str, Any]):
         callbacks=[
             TimingDebugCallback(),
             CustomRayTrainReportCallback(
-                interval=IntervalConfig(every_n_batches=num_batches_per_step * 8)  # checkpoint every 8 steps
+                interval=IntervalConfig(
+                    every_n_batches=num_batches_per_step * 8
+                )  # checkpoint every 8 steps
             ),
             # TrainLossLoggingCallback(
             #     interval=IntervalConfig(every_n_batches=config["train_batch_size"]),
@@ -159,7 +166,8 @@ def train_func(config: dict[str, Any]):
 def find_latest_checkpoint_manually(restore_path: str) -> str:
     # Find the latest checkpoint in the source directory
     checkpoint_dirs = [
-        d for d in os.listdir(restore_path)
+        d
+        for d in os.listdir(restore_path)
         if d.startswith("checkpoint_") and os.path.isdir(os.path.join(restore_path, d))
     ]
 
@@ -188,7 +196,13 @@ def get_scaling_config(smoke_test: bool = False) -> ScalingConfig:
         )
 
 
-def main(data_path: str, model_name: str, restore_path: str | None = None, new_run: bool = False, smoke_test: bool = False):
+def main(
+    data_path: str,
+    model_name: str,
+    restore_path: str | None = None,
+    new_run: bool = False,
+    smoke_test: bool = False,
+):
     torch.set_float32_matmul_precision("high")
     torch.backends.cuda.matmul.allow_tf32 = True
     torch.backends.cudnn.allow_tf32 = True
@@ -202,7 +216,15 @@ def main(data_path: str, model_name: str, restore_path: str | None = None, new_r
         ignore_reinit_error=True,
         runtime_env={
             "py_modules": ["."],
-            "excludes": ["models", "gpt2", ".git", ".venv", "data", ".ruff_cache", "*.db"],
+            "excludes": [
+                "models",
+                "gpt2",
+                ".git",
+                ".venv",
+                "data",
+                ".ruff_cache",
+                "*.db",
+            ],
             "env_vars": {
                 "MLFLOW_TRACKING_URI": mlflow_tracking_uri,
             },
@@ -250,7 +272,6 @@ def main(data_path: str, model_name: str, restore_path: str | None = None, new_r
     with mlflow.start_run(
         log_system_metrics=True,
     ) as run:
-
         checkpoint_config = CheckpointConfig(
             num_to_keep=10,
             checkpoint_score_attribute="val_loss",
@@ -303,12 +324,14 @@ def main(data_path: str, model_name: str, restore_path: str | None = None, new_r
 
         if smoke_test:
             train_loop_config = TrainLoopConfig.create_for_smoketest(
-                model_config, run.info.run_id,
+                model_config,
+                run.info.run_id,
                 restore_checkpoint_path=restore_checkpoint_path,
             )
         else:
             train_loop_config = TrainLoopConfig.create_for_dgx_spark(
-                model_config, run.info.run_id,
+                model_config,
+                run.info.run_id,
                 restore_checkpoint_path=restore_checkpoint_path,
             )
 
@@ -353,7 +376,7 @@ if __name__ == "__main__":
         "--new-run",
         action="store_true",
         help="Create a new experiment run while loading checkpoint from restore-path. "
-             "Useful for continuing training as a separate experiment.",
+        "Useful for continuing training as a separate experiment.",
     )
     parser.add_argument(
         "--smoke-test",
